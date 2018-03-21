@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.json.*;
 
 public class GDriveProvider {
 
@@ -21,14 +22,21 @@ public class GDriveProvider {
                 "client_id=" + _clientId;
     }
 
-    public String GetAuthProperties(String code) {
+    public String GetAuthProperties(String code, String refreshToken) {
         try {
             String strUrl = "https://www.googleapis.com/oauth2/v4/token";
-            byte[] data = ("code=" + code + "&" +
-                    "client_id=" + _clientId + "&" +
-                    "client_secret=" + _clientSecret + "&" +
+            String requestParams = "client_id=" + _clientId + "&" +
+                    "client_secret=" + _clientSecret;
+            if (refreshToken.isEmpty()) {
+                requestParams += "&code=" + code + "&" +
                     "redirect_uri=urn:ietf:wg:oauth:2.0:oob&" +
-                    "grant_type=authorization_code").getBytes("UTF-8");
+                        "grant_type=authorization_code";
+            } else {
+                requestParams += "&refresh_token=" + refreshToken + "&" +
+                        "grant_type=refresh_token";
+            }
+
+            byte[] data = (requestParams).getBytes("UTF-8");
             URL url = new URL(strUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
@@ -67,10 +75,10 @@ public class GDriveProvider {
     public void setupTokens(String authProperties) {
         Matcher accessTokenMatcher = Pattern.compile("access_token\": \"(.*?)\"").matcher(authProperties);
         Matcher refreshTokenMatcher = Pattern.compile("refresh_token\": \"(.*?)\"").matcher(authProperties);
-        accessTokenMatcher.find();
-        refreshTokenMatcher.find();
-        _accessToken = accessTokenMatcher.group(1);
-        _refreshToken = refreshTokenMatcher.group(1);
+        if (accessTokenMatcher.find())
+            _accessToken = accessTokenMatcher.group(1);
+        if (refreshTokenMatcher.find())
+            _refreshToken = refreshTokenMatcher.group(1);
     }
 
     public void connect() {
@@ -83,8 +91,8 @@ public class GDriveProvider {
 
     public String getProfileName() {
         String response = _fetchResponse("https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=youraccess_token");
-        response = response;
-        return "Maria";
+        JSONObject obj = new JSONObject(response);
+        return obj.getString("name");
     }
 
     public List<String> getFileList() {
@@ -98,6 +106,10 @@ public class GDriveProvider {
     }
 
     private String _fetchResponse(String strUrl) {
+        return _fetchResponse(strUrl, false);
+    }
+
+    private String _fetchResponse(String strUrl, boolean secondTime) {
         try {
             URL url = new URL(strUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -126,7 +138,15 @@ public class GDriveProvider {
             return response.toString();
         }
         catch (Exception e) {
-            return "";
+            if (secondTime)
+                return "";
+            _refreshTokens();
+            return _fetchResponse(strUrl, true);
         }
+    }
+
+    private void _refreshTokens() {
+        String authProperties = GetAuthProperties("", _refreshToken);
+        setupTokens(authProperties);
     }
 }

@@ -35,7 +35,7 @@ public class ConsoleCommands {
             // get code and fetch tokens
             Scanner scanner = new Scanner(System.in);
             String code = scanner.next();
-            authProperties = _gdrive.GetAuthProperties(code);
+            authProperties = _gdrive.GetAuthProperties(code, "");
             _writeProperites(authProperties);
             _gdrive.setupTokens(authProperties);
         }
