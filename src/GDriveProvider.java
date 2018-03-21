@@ -7,15 +7,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class GDriveProvider {
-    class AuthToken
-    {
-        public String refreshToken;
-        public String accessToken;
-    }
 
     String _clientId = "359097715554-9l17d9b86g2h84cvtk23aarjtae690ud.apps.googleusercontent.com";
     String _clientSecret = "EihzgWNJKZSZGmV-9znM72Fu";
-    String _token = "";
+    String _accessToken = "";
+    String _refreshToken = "";
 
     public String GetAuthorizationUrl() {
         return "https://accounts.google.com/o/oauth2/v2/auth?" +
@@ -25,7 +21,7 @@ public class GDriveProvider {
                 "client_id=" + _clientId;
     }
 
-    public AuthToken GetAuthToken(String code) {
+    public String GetAuthProperties(String code) {
         try {
             String strUrl = "https://www.googleapis.com/oauth2/v4/token";
             byte[] data = ("code=" + code + "&" +
@@ -61,18 +57,20 @@ public class GDriveProvider {
             }
             in.close();
 
-            Pattern accessTokenPattern = Pattern.compile("access_token\": \"(.*?)\"");
-            Pattern refreshTokenPattern = Pattern.compile("refresh_token\": \"(.*?)\"");
-            AuthToken token = new AuthToken();
-            token.accessToken = accessTokenPattern.matcher(response.toString()).group(0).toString();
-            token.refreshToken = refreshTokenPattern.matcher(response.toString()).group(0).toString();
-            return token;
+            return response.toString();
         }
         catch (Exception e) {
-            String s = e.getMessage();
-            s = s;
             return null;
         }
+    }
+
+    public void setupTokens(String authProperties) {
+        Matcher accessTokenMatcher = Pattern.compile("access_token\": \"(.*?)\"").matcher(authProperties);
+        Matcher refreshTokenMatcher = Pattern.compile("refresh_token\": \"(.*?)\"").matcher(authProperties);
+        accessTokenMatcher.find();
+        refreshTokenMatcher.find();
+        _accessToken = accessTokenMatcher.group(1);
+        _refreshToken = refreshTokenMatcher.group(1);
     }
 
     public void connect() {
@@ -100,7 +98,7 @@ public class GDriveProvider {
             connection.setRequestProperty("accept", "application/json");
 
             // Specify your credentials
-            connection.setRequestProperty("Authorization", "Bearer " + _token);
+            connection.setRequestProperty("Authorization", "Bearer " + _accessToken);
 
             // Read response
             int responseCode = connection.getResponseCode();
