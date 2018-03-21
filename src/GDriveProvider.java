@@ -15,7 +15,7 @@ public class GDriveProvider {
 
     public String GetAuthorizationUrl() {
         return "https://accounts.google.com/o/oauth2/v2/auth?" +
-                "scope=https://www.googleapis.com/auth/drive&" +
+                "scope=https://www.googleapis.com/auth/drive%20profile&" +
                 "response_type=code&" +
                 "redirect_uri=urn:ietf:wg:oauth:2.0:oob&" +
                 "client_id=" + _clientId;
@@ -81,10 +81,25 @@ public class GDriveProvider {
 
     }
 
+    public String getProfileName() {
+        String response = _fetchResponse("https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=youraccess_token");
+        response = response;
+        return "Maria";
+    }
+
     public List<String> getFileList() {
-        // Create connection object, based on the given url-name
+        _fetchResponse("https://content.googleapis.com/drive/v3/files");
+        List<String> list =  new ArrayList<String>();
+        return list;
+    }
+
+    public void UploadFile(String filePath) {
+
+    }
+
+    private String _fetchResponse(String strUrl) {
         try {
-            URL url = new URL("https://content.googleapis.com/drive/v3/files");
+            URL url = new URL(strUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
             // Properties in order to ensure succesful POST-request
@@ -94,7 +109,6 @@ public class GDriveProvider {
 
             // Specify request-method and headers
             connection.setRequestMethod("GET");
-            connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("accept", "application/json");
 
             // Specify your credentials
@@ -109,17 +123,10 @@ public class GDriveProvider {
                 response.append(inputLine);
             }
             in.close();
-
+            return response.toString();
         }
         catch (Exception e) {
-            String s = e.getMessage();
-            s = s;
+            return "";
         }
-        List<String> list =  new ArrayList<String>();
-        return list;
-    }
-
-    public void UploadFile(String filePath) {
-
     }
 }

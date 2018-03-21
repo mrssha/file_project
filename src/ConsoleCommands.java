@@ -25,19 +25,22 @@ public class ConsoleCommands {
         {
             System.out.println("Authentication properties loaded");
             _gdrive.setupTokens(authProperties);
-            return;
+        }
+        else {
+            System.out.println("Authentication needed");
+            System.out.println("Go the following url in the browser:");
+            System.out.println(_gdrive.GetAuthorizationUrl());
+            System.out.print("\nAuthorization code: ");
+
+            // get code and fetch tokens
+            Scanner scanner = new Scanner(System.in);
+            String code = scanner.next();
+            authProperties = _gdrive.GetAuthProperties(code);
+            _writeProperites(authProperties);
+            _gdrive.setupTokens(authProperties);
         }
 
-        System.out.println("Authentication needed");
-        System.out.println("Go the following url in the browser:");
-        System.out.println(_gdrive.GetAuthorizationUrl());
-        System.out.print("\nAuthorization code: ");
-
-        Scanner scanner = new Scanner(System.in);
-        String code = scanner.next();
-        authProperties = _gdrive.GetAuthProperties(code);
-        _writeProperites(authProperties);
-        _gdrive.setupTokens(authProperties);
+        System.out.println("Name: " + _gdrive.getProfileName());
     }
 
     public void list() {
