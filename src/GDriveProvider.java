@@ -96,15 +96,22 @@ public class GDriveProvider {
     }
 
     public List<String> getFileList() {
-        _fetchResponse("https://content.googleapis.com/drive/v3/files");
         List<String> list =  new ArrayList<String>();
+        String response = _fetchResponse("https://content.googleapis.com/drive/v3/files");
+        JSONObject obj = new JSONObject(response);
+        JSONArray files_info = obj.getJSONArray("files");
+
+        for (int i = 0; i < files_info.length(); i++) {
+            list.add(files_info.getJSONObject(i).getString("name"));
+
+        }
         return list;
     }
 
     public void UploadFile(String filePath) {
+        // String response =  _fetchResponse("https://content.googleapis.com/drive/v3/files/create");
 
     }
-
     private String _fetchResponse(String strUrl) {
         return _fetchResponse(strUrl, false);
     }

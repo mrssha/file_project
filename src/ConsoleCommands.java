@@ -41,13 +41,15 @@ public class ConsoleCommands {
         }
 
         System.out.println("Name: " + _gdrive.getProfileName());
+
     }
 
     public void list() {
-        _gdrive.getFileList();
+        System.out.println("File list: " + _gdrive.getFileList());
     }
 
     public void upload() {
+        //_gdrive.UploadFile(Paths.get(""));
 
     }
 
