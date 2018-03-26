@@ -9,6 +9,7 @@ public class Main {
         GDriveProvider gdrive = new GDriveProvider();
         ConsoleCommands commands = new ConsoleCommands(gdrive);
         Scanner scanner = new Scanner(System.in);
+        scanner.useDelimiter("\n");
 
         System.out.println("Welcome to file_project");
 
@@ -26,8 +27,10 @@ public class Main {
                     commands.help();
                 } else if (command.equals("list")) {
                     commands.list();
-                } else if (command.equals("upload")) {
-                    commands.upload();
+                } else if (command.startsWith("upload ")) {
+                    commands.upload(command.substring(7));
+                } else if (command.startsWith("download ")) {
+                    commands.download(command.substring(9));
                 } else {
                     System.out.println("Unknown command");
                 }

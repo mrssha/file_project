@@ -1,6 +1,5 @@
 import java.io.PrintWriter;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Scanner;
 
@@ -40,7 +39,7 @@ public class ConsoleCommands {
             _gdrive.setupTokens(authProperties);
         }
 
-        System.out.println("Name: " + _gdrive.getProfileName());
+        System.out.println("Hi " + _gdrive.getProfileName() + "!");
 
     }
 
@@ -48,9 +47,12 @@ public class ConsoleCommands {
         System.out.println("File list: " + _gdrive.getFileList());
     }
 
-    public void upload() {
-        //_gdrive.UploadFile(Paths.get(""));
+    public void upload(String filePath) {
+        _gdrive.uploadFile(filePath);
+    }
 
+    public void download(String fileId) {
+        _gdrive.downloadFile(fileId);
     }
 
     private String _readProperties() {

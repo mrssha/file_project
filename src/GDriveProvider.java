@@ -1,11 +1,14 @@
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.json.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 public class GDriveProvider {
 
@@ -37,35 +40,7 @@ public class GDriveProvider {
             }
 
             byte[] data = (requestParams).getBytes("UTF-8");
-            URL url = new URL(strUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-
-            // Properties in order to ensure succesful POST-request
-            connection.setUseCaches(false);
-            connection.setDoInput(true);
-            connection.setDoOutput(true);
-
-            // Specify request-method and headers
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Length", Integer.toString(data.length));
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            //connection.setRequestProperty("accept", "application/json");
-
-            OutputStream out = connection.getOutputStream();
-            out.write(data);
-            out.flush();
-
-            // Read response
-            int responseCode = connection.getResponseCode();
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String inputLine;
-            StringBuffer response = new StringBuffer();
-            while ((inputLine = in.readLine()) != null) {
-                response.append(inputLine);
-            }
-            in.close();
-
-            return response.toString();
+            return _fetchPostResponse(strUrl, data, "application/x-www-form-urlencoded");
         }
         catch (Exception e) {
             return null;
@@ -90,33 +65,58 @@ public class GDriveProvider {
     }
 
     public String getProfileName() {
-        String response = _fetchResponse("https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=youraccess_token");
+        String response = _toString(_fetchResponse("https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=youraccess_token"));
         JSONObject obj = new JSONObject(response);
         return obj.getString("name");
     }
 
-    public List<String> getFileList() {
-        List<String> list =  new ArrayList<String>();
-        String response = _fetchResponse("https://content.googleapis.com/drive/v3/files");
+    public String getFileList() {
+        String response = _toString(_fetchResponse("https://content.googleapis.com/drive/v3/files"));
         JSONObject obj = new JSONObject(response);
         JSONArray files_info = obj.getJSONArray("files");
 
+        String result = "";
         for (int i = 0; i < files_info.length(); i++) {
-            list.add(files_info.getJSONObject(i).getString("name"));
-
+            if (!result.isEmpty()) result += "\n";
+            result += files_info.getJSONObject(i).getString("name") + ", id: " + files_info.getJSONObject(i).getString("id");
         }
-        return list;
+        return result;
     }
 
-    public void UploadFile(String filePath) {
-        // String response =  _fetchResponse("https://content.googleapis.com/drive/v3/files/create");
+    public void uploadFile(String filePath) {
+        try {
+            Path path = Paths.get(filePath);
+            byte[] fileContent =  Files.readAllBytes(path);
+            String response = _fetchPostResponse("https://www.googleapis.com/upload/drive/v3", fileContent, "image/jpeg");
+        }
+        catch (Exception e){
+        }
 
     }
-    private String _fetchResponse(String strUrl) {
+
+    public void downloadFile(String fileId) {
+        try {
+            //  + "?alt=media"
+            String url = "https://www.googleapis.com/drive/v3/files/" + fileId;
+            String response = _toString(_fetchResponse(url));
+            String fileName = new JSONObject(response).getString("name");
+            byte[] fileContent = _toBytes(_fetchResponse(url + "?alt=media"));
+
+            String userHomeFolder = System.getProperty("user.home");
+            FileOutputStream stream = new FileOutputStream(userHomeFolder + "/Desktop/" + fileName);
+            stream.write(fileContent);
+            stream.close();
+        }
+        catch (Exception e){
+        }
+
+    }
+
+    private InputStream  _fetchResponse(String strUrl) {
         return _fetchResponse(strUrl, false);
     }
 
-    private String _fetchResponse(String strUrl, boolean secondTime) {
+    private InputStream  _fetchResponse(String strUrl, boolean secondTime) {
         try {
             URL url = new URL(strUrl);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -135,7 +135,20 @@ public class GDriveProvider {
 
             // Read response
             int responseCode = connection.getResponseCode();
-            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            return connection.getInputStream();
+        }
+        catch (Exception e) {
+            if (secondTime)
+                return null;
+            _refreshTokens();
+            return _fetchResponse(strUrl, true);
+        }
+    }
+
+    private String _toString(InputStream is)
+    {
+        try {
+            BufferedReader in = new BufferedReader(new InputStreamReader(is));
             String inputLine;
             StringBuffer response = new StringBuffer();
             while ((inputLine = in.readLine()) != null) {
@@ -144,11 +157,64 @@ public class GDriveProvider {
             in.close();
             return response.toString();
         }
+        catch (Exception e)
+        {
+            return "";
+        }
+    }
+
+    private byte[] _toBytes(InputStream is)
+    {
+        try {
+            int nRead;
+            byte[] data = new byte[16384];
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            while ((nRead = is.read(data, 0, data.length)) != -1) {
+                buffer.write(data, 0, nRead);
+            }
+            buffer.flush();
+            return buffer.toByteArray();
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    private String _fetchPostResponse(String strUrl, byte[] data, String contentType)
+    {
+        try{
+            URL url = new URL(strUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+            // Properties in order to ensure succesful POST-request
+            connection.setUseCaches(false);
+            connection.setDoInput(true);
+            connection.setDoOutput(true);
+
+            // Specify request-method and headers
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Length", Integer.toString(data.length));
+            connection.setRequestProperty("Content-Type", contentType);
+
+            OutputStream out = connection.getOutputStream();
+            out.write(data);
+            out.flush();
+
+            // Read response
+            int responseCode = connection.getResponseCode();
+            BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            return response.toString();
+        }
         catch (Exception e) {
-            if (secondTime)
-                return "";
-            _refreshTokens();
-            return _fetchResponse(strUrl, true);
+            return null;
         }
     }
 
